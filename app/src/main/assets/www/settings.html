@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SMS Filters</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="generator" content="Malawi-Music.com">
+    <!-- Custom -->
+    <link href="assets/css/style.css" rel="stylesheet">
+    <!-- Custom -->
+    <link href="assets/zmdi/css/material-design-iconic-font.min.css" rel="stylesheet">
+    <script type="text/javascript" src="assets/js/jquery.js"></script>
+    <script type="text/javascript" src="assets/js/application.js"></script>
+    <style>
+        .status{
+            font-weight:bold;
+        }
+    </style>
+</head>
+<body>
+<template style="display: none;">
+    <tr data-Id="{Id}">
+        <td><i class="zmdi zmdi-tag"></i></td>
+        <td>Item here {num}</td>
+        <td><i class="zmdi zmdi-delete"></i></td>
+    </tr>
+</template>
+<div class="body-container">
+    <div class="settings-container" style="margin-bottom: 35px;">
+        <div class="text-input-container" style="padding: 1.25%;margin: 1.25%;">
+            <inpuTag>
+                <span><i class="zmdi zmdi-view-web"></i></span>
+                <span><input placeholder="Rest API full URL" class="url"></span>
+            </inpuTag>
+            <inpuTag>
+                <span><i class="zmdi zmdi-key"></i></span>
+                <span><input placeholder="API Key" class="key"></span>
+            </inpuTag>
+            <inpuTag>
+                <span><i class="zmdi zmdi-eye"></i></span>
+                <span><input placeholder="API Password" class="password" type="password"></span>
+            </inpuTag>
+            <button class="save"><i class="zmdi zmdi-save"></i> APPLY CHANGES</button>
+        </div>
+    </div>
+    <div class="extra-settings">
+        <div class="setting-box" id="SMS_VIBRATOR">
+            <span>SMS receiving notification</span>
+            <span><i class="zmdi zmdi-check status"></i></span>
+        </div>
+        <div class="setting-box" id="SMS_NOTIFIER">
+            <span>Vibration on SMS receiving</span>
+            <span><i class="zmdi zmdi-check status"></i></span>
+        </div>
+        <div class="setting-box" id="SYNC_VIBRATOR">
+            <span>Vibration on sync success</span>
+            <span><i class="zmdi zmdi-check status"></i></span>
+        </div>
+        <div class="setting-box" id="SYNC_ERROR">
+            <span>Sync communication notification</span>
+            <span><i class="zmdi zmdi-check status"></i></span>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    $(document).ready(function () {
+        let y=4;
+        $('.save').click(function(){
+            let url = $('.url').val().toLowerCase();
+            let key = $('.key').val();
+            let pass = $('.password').val();
+
+            if(url==="") return toast("Please Input your API URL");
+            if(key==="") return toast("Please Input your API Key");
+            if(pass==="") return toast("Please Input your API Password");
+
+            if(!isURL(url)){
+                return toast("Please enter valid URL");
+            }
+            toast(Android.addAPI(url,key,pass));
+        });
+
+        $('.setting-box').each(function(index,element){
+            let id = $(element).attr('id');
+            let setting = Android.getPreference(id);
+            if(setting==="on"){
+                $('#'+id).find('.status').css('visibility','visible');
+            }
+            else{
+                $('#'+id).find('.status').css('visibility','hidden');
+            }
+        });
+
+        $('body').on('click','.setting-box',function () {
+            $('bottomLoader').css('display','block');
+            let id = $(this).attr('id');
+            let setting = Android.getPreference(id);
+            let f=false;
+            if(setting==="on"){
+                setting="off"
+                f=false;
+            }
+            else{
+                f=true;
+                setting="on";
+            }
+            setting = Android.setPreference(id,setting);
+            if(setting==="on")setting="off";
+            if(f==false){
+                $('#'+id).find('.status').css('visibility','hidden');
+            }
+            else{
+                $('#'+id).find('.status').css('visibility','visible');
+            }
+            setTimeout(function fn(){
+                $(this).css('background-color','');
+            },300);
+            $('bottomLoader').css('display','none');
+        });
+
+        getAPI();
+    });
+
+    function getAPI(){
+        let api = Android.getAPI();
+        if(api!=null){
+            api = toJson(api);
+            $('.url').val(api[0].url);
+            $('.key').val(api[0].key);
+            $('.password').val(api[0].password);
+        }
+        else{
+            toast("No API found");
+        }
+        $('bottomLoader').css('display','none');
+    }
+</script>
+</body>
+</html>

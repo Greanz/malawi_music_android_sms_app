@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SMS Filters</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="generator" content="Malawi-Music.com">
+    <!-- Custom -->
+    <link href="assets/css/style.css" rel="stylesheet">
+    <!-- Custom -->
+    <link href="assets/zmdi/css/material-design-iconic-font.min.css" rel="stylesheet">
+    <script type="text/javascript" src="assets/js/jquery.js"></script>
+    <script type="text/javascript" src="assets/js/application.js"></script>
+</head>
+<body>
+    <bottomLoader></bottomLoader>
+    <template style="display: none;">
+        <tr data-Id="{Id}" id="row">
+            <td><i class="zmdi zmdi-tag" style=""></i></td>
+            <td>{name}</td>
+            <td><i class="zmdi zmdi-delete"></i></td>
+        </tr>
+    </template>
+    <template-colors style="display: none;">
+    </template-colors>
+    <div class="body-container">
+        <div class="filters-container" style="margin-bottom: 35px;">
+            <div class="text-input-container">
+                <input placeholder="Filter receiving recipients" class="filterName">
+            </div>
+            <table class="filters-table" cellpadding="0" cellspacing="0">
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+        <div class="colors-container" data-tr="">
+            <div class="myColors">
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('.filterName').keyup(function (e) {
+                if(e.keyCode==13){
+                    let name = $(this).val();
+                    if(name==''){
+                        return toast("Enter filter to submit");
+                    }
+                    let s= Android.addFilter(name);
+                    if(strHas(s,'successfully')){
+                        let template = $('template').html();
+                        template = template.replace("{name}",name);
+                        template = template.replace("delete",'check');
+                        $('.filters-table tbody').prepend(template);
+                        $(this).val('');
+                    }
+                    $(this).focus();
+                    return toast(s);
+                }
+            });
+
+            let colors = shuffle(["#cf5b2c","#96281b","#2e3b77","#795548","#673ab7","#e1bee7"]);
+            for(let i=0; i<=colors.length; i++){
+                let color = document.createElement('div');
+                color.id=colors[i]
+                color.style.backgroundColor=colors[i];
+                color.className='myFilterColor';
+                $('.myColors').append(color);
+            }
+
+            getFilters();
+
+            $('body').on('click','.zmdi-delete',function(){
+                let parent = $(this).parents('tr');
+                let value= $(parent).attr('data-Id');
+                pop_up('DELETE?','Are you sure you want to delete the record','Yes','No',value);
+                return $(parent).addClass('text-box-selected');
+            });
+
+            $('body').on('click','.zmdi-tag',function(){
+                let parent = $(this).parents('tr');
+                let value= $(parent).attr('data-Id');
+                let id = $(parent).attr('id');
+                $(parent).addClass('text-box-selected');
+                $('.colors-container').css('bottom','0px').attr('data-tr',id);
+            });
+
+            $('body').on('click','.myFilterColor',function(){
+                let rowId = $('.colors-container').attr('data-tr');
+                let color = $(this).attr('id');
+                let td = $('#'+rowId).find('td');
+                let name = td[1].firstChild.textContent;
+                let s = Android.setColor(color,name);
+                if(strHas(s,'applied')){
+                    $('#'+rowId).find('.zmdi-tag').css('color',color);
+                }
+                toast(s);
+            });
+
+            $('html').click(function(e){
+                if ($(e.target).closest("table").length) {
+                    return;
+                }
+                $('.colors-container').css('bottom','-105px').attr('data-tr','');
+            });
+
+            $('body').on('click','.negativeBtn',function(){
+                return $('tr').removeClass('text-box-selected');
+            });
+
+            $('body').on('click','.positiveBtn',function(){
+                $('.text-box-selected').slideUp();
+                let v = $('#pop-over').find('.container').attr('data-value');
+                $('.negativeBtn').click();
+                toast(Android.DeleteFilter(v));
+            });
+
+        });
+        function getFilters(){
+            let filters = Android.getFilters();
+            //let  filters = '[{"Id":"2","Name":"Transaction Failed with TXN Id : RC191110.0915.G33308 Payer minimum category residual balance reached","From":"AirtelMoney","Time":"10\\/11\\/2019 09:11:47 AM","Status":"1"},{"Id":"1","Name":"PaNet WhatsApp 182MB valid until 07-12-2019, 23:59 hrs.\\n\\r\\n","From":"Airtel","Time":"10\\/11\\/2019 09:11:47 AM","Status":"1"}]\n';
+            if(filters!=null){
+                filters = toJson(filters);
+                for(let i in filters){
+                    let filter   = filters[i];
+                    let template = $('template').html();
+                    template = template.replace("{name}",filter.Name);
+                    template = template.replace("{Id}",filter.Id);
+                    template = template.replace("row",'row'+filter.Id);
+                    if(filter.Color!=null){
+                        let color = filter.Color.split(',');
+                        template = template.replace('style=""','style="color:'+color[1]+';"');
+                    }
+                    $('.filters-table tbody').prepend(template);
+                }
+            }
+            else{
+                toast("No filters found");
+            }
+            $('bottomLoader').css('display','none');
+        }
+    </script>
+</body>
+</html>

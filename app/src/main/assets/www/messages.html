@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home Of SMS Inbox</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="generator" content="Malawi-Music.com">
+    <!-- Custom -->
+    <link href="assets/css/style.css" rel="stylesheet">
+    <!-- Custom -->
+    <link href="assets/zmdi/css/material-design-iconic-font.min.css" rel="stylesheet">
+    <script type="text/javascript" src="assets/js/jquery.js"></script>
+    <script type="text/javascript" src="assets/js/application.js"></script>
+</head>
+<body>
+    <bottomLoader></bottomLoader>
+    <template style="display: none;">
+        <div class="text-box" data-Id="{Id}">
+            <div class="sideA"><circled>{L}</circled></div>
+            <div class="sideB">
+                <col-first>
+                    <name>{from}</name>
+                    <time>{time}</time>
+                </col-first>
+                <col-second>{text}</col-second>
+                <col-date>Received on: {date}</col-date>
+                <col-last>
+                    <box><status>{status}</status></box>
+                    <box>
+                        <btn1 class="del" style="visibility: hidden;">Delete</btn1>
+                        <btn1 class="sync">Import</btn1>
+                    </box>
+                </col-last>
+            </div>
+        </div>
+    </template>
+
+    <div class="body-container">
+
+    </div>
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            setTimeout(function i(){
+                getMessages();
+            },1000);
+
+            $('.body-container').on('click','.del',function(){
+                let parent = $(this).parents('.text-box');
+                let value= $(parent).attr('data-Id');
+                pop_up('DELETE?','Are you sure you want to delete the message','Yes','No',value);
+                return $(parent).addClass('text-box-selected');
+            });
+
+            $('.body-container').on('click','.sync',function(){
+                let parent = $(this).parents('.text-box');
+                let target = $(parent).find('circled');
+                let spinner = '<i class="zmdi zmdi-spinner zmdi-hc-spin"></i>';
+                let char = $(target).html();
+                let value= $(parent).attr('data-Id');
+                if(window.sessionStorage.getItem('SY_'+value)==null) {
+                    window.sessionStorage.setItem('SY_'+value,value);
+                    $(target).html(spinner);
+                    let message = $(parent).find('col-second').html();
+                    let from = $(parent).find('name').html();
+                    let save = Android.importSMS(message,from);
+                    if(save==null){
+                        toast("Error, could not save message");
+                    }
+                    else {
+                        toast(save);
+                        $(parent).slideUp();
+                    }
+                    window.sessionStorage.removeItem('SY_'+value);
+                }else{
+                    toast('Wait for current request to finish');
+                }
+            });
+
+        });
+
+        function getMessages(){
+            let messages = Android.getInbox();
+            //let  messages = '[{"Id":"2","msg":"Transaction Failed with TXN Id : RC191110.0915.G33308 Payer minimum category residual balance reached","From":"AirtelMoney","Time":"10\\/11\\/2019 09:11:47 AM","Status":"1"},{"Id":"1","msg":"PaNet WhatsApp 182MB valid until 07-12-2019, 23:59 hrs.\\n\\r\\n","From":"Airtel","Time":"10\\/11\\/2019 09:11:47 AM","Status":"1"}]\n';
+            if(messages!=null){
+                messages = toJson(messages);
+                for(let i in messages){
+                    let sms = messages[i];
+                    sms.Id = 'v'+guidGenerator();
+                    let template = $('template').html();
+                    template = template.replace("{from}",sms.From);
+                    sms.Time = sms.Time.replace(' ','-').split('-');
+                    template = template.replace("{time}",sms.Time[1]);
+                    template = template.replace("{date}",sms.Time[0]);
+                    template = template.replace("{Id}",sms.Id);
+                    let status='<i class="zmdi zmdi-time"></i>';
+                    template = template.replace("{text}",sms.msg);
+                    template = template.replace("{status}",status);
+                    if(strHas(sms.From,'265')) {
+                        template = template.replace("{L}", sms.From.charAt(sms.From.length-1));
+                    }
+                    else{
+                        template = template.replace("{L}", sms.From.substring(0, 1));
+                    }
+                    $('.body-container').append(template);
+                }
+            }
+            else{
+                toast("No messages found or permission denied");
+            }
+            $('bottomLoader').css('display','none');
+        }
+    </script>
+</body>
+</html>

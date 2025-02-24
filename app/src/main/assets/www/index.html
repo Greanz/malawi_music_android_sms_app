@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home Of SMS</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="generator" content="Malawi-Music.com">
+    <!-- Custom -->
+    <link href="assets/css/style.css" rel="stylesheet">
+    <!-- Custom -->
+    <link href="assets/zmdi/css/material-design-iconic-font.min.css" rel="stylesheet">
+    <script type="text/javascript" src="assets/js/jquery.js"></script>
+    <script type="text/javascript" src="assets/js/application.js"></script>
+</head>
+<body data-Ids="">
+    <bottomLoader></bottomLoader>
+    <template style="display: none;">
+        <div class="text-box" data-Id="{Id}" id="msg{Id}">
+            <div class="sideA"><circled style="">{L}</circled></div>
+            <div class="sideB">
+                <col-first>
+                    <name>{from}</name>
+                    <time>{time}</time>
+                </col-first>
+                <col-second>{text}</col-second>
+                <col-date>Received on: {date}</col-date>
+                <col-last>
+                    <box><status>{status}</status></box>
+                    <box>
+                        <btn1 class="sync">Resync</btn1>
+                        <btn1 class="del">Delete</btn1>
+                    </box>
+                </col-last>
+            </div>
+        </div>
+    </template>
+
+    <div class="body-container">
+
+    </div>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            if(window.sessionStorage.getItem('FLASHED')!='flashed'){
+                window.sessionStorage.setItem('FLASHED','flashed');
+                setTimeout(function(){
+                    Android.HideFlash();
+                },600);
+            }
+
+            getMessages(0);
+
+            $('.body-container').on('click','.del',function(){
+                let parent = $(this).parents('.text-box');
+                let value= $(parent).attr('data-Id');
+                pop_up('DELETE?','Are you sure you want to delete the message','Yes','No',value);
+                return $(parent).addClass('text-box-selected');
+            });
+
+            $('.body-container').on('click','.sync',function(){
+                let parent = $(this).parents('.text-box');
+                let target = $(parent).find('circled');
+                let spinner = '<i class="zmdi zmdi-spinner zmdi-hc-spin"></i>';
+                let char = $(target).html();
+                let value= $(parent).attr('data-Id');
+                if(window.sessionStorage.getItem('SY_'+value)==null) {
+                    window.sessionStorage.setItem('SY_'+value,value);
+                    let s = Android.initiateSync(value);
+                    if(strHas(s,'Sent')){
+                        $(parent).find('status').html('Ongoing');
+                        $(this).css('visibility','hidden');
+                        setInterval(function status(){
+                            let status =Android.getStatus(value);
+                            if(status=='2'){
+                                $(parent).find('status').html('Synced');
+                            }
+                        },600);
+                    }
+                    toast(s);
+                }else{
+                    toast('Wait for current request to finish');
+                }
+            });
+
+            $('body').on('click','.negativeBtn',function(){
+                return $('.text-box').removeClass('text-box-selected');
+            });
+
+            $('body').on('click','.positiveBtn',function(){
+                $('.text-box-selected').slideUp();
+                let v = $('#pop-over').find('.container').attr('data-value');
+                $('.negativeBtn').click();
+                toast(Android.Delete(v));
+            });
+
+        });
+
+        function getMessages(seen){
+            let messages = Android.getMessages(seen);
+            //let  messages = '[{"Id":"2","msg":"Transaction Failed with TXN Id : RC191110.0915.G33308 Payer minimum category residual balance reached","From":"AirtelMoney","Time":"10\\/11\\/2019 09:11:47 AM","Status":"1"},{"Id":"1","msg":"PaNet WhatsApp 182MB valid until 07-12-2019, 23:59 hrs.\\n\\r\\n","From":"Airtel","Time":"10\\/11\\/2019 09:11:47 AM","Status":"1"}]\n';
+            if(messages!=null){
+                messages = toJson(messages);
+                for(let i in messages){
+                    let sms = messages[i];
+                    let template = $('template').html();
+                    template = template.replace("{from}",sms.From);
+                    sms.Time = sms.Time.replace(' ','-').split('-');
+                    template = template.replace("{time}",sms.Time[1]);
+                    template = template.replace("{date}",sms.Time[0]);
+                    template = template.replace("{Id}",sms.Id);
+                    if(sms.Color!=null){
+                        let color = sms.Color.split(',');
+                        template = template.replace('style=""','style="background-color:'+color[1]+';"');
+                    }
+                    let status='';
+                    if(sms.Status==1){
+                        status = "On Que";
+                    }
+                    else if(sms.Status==3){
+                        status = "Waiting...";
+                    }
+                    else{
+                        status = "Synced";
+                    }
+                    template = template.replace("{text}",sms.msg);
+                    template = template.replace("{status}",status);
+                    let myValue = sms.Id;
+                    let bodyIds = $('body').attr('data-Ids');
+                    if(bodyIds==""){
+                        $('body').attr('data-Ids',myValue);
+                    }
+                    else{
+                        $('body').attr('data-Ids',bodyIds+','+myValue);
+                    }
+                    if(strHas(sms.From,'265')) {
+                        template = template.replace("{L}", sms.From.charAt(sms.From.length-1));
+                    }
+                    else{
+                        template = template.replace("{L}", sms.From.substring(0, 1));
+                    }
+                    if(seen=='100'){
+                        let bodyIds = $('body').attr('data-Ids').split(',');
+                        //if(!inArray(myValue,bodyIds)){
+                            $('.body-container').prepend(template);
+                        //}
+                    }
+                    else {
+                        $('.body-container').append(template);
+                    }
+                }
+            }
+            else{
+                if(seen!='100') {
+                    toast("No messages found");
+                }
+            }
+            $('bottomLoader').css('display','none');
+            setInterval(function checkMessages(){
+                return getMessages('100');
+            },5000);
+        }
+    </script>
+</body>
+</html>
